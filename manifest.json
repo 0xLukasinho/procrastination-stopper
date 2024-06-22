@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "Procrastination Stopper",
+    "version": "1.0",
+    "description": "Manage your time online by tracking usage, providing break reminders, and blocking sites once a time limit is reached.",
+    "permissions": [
+      "tabs",
+      "storage",
+      "notifications",
+      "activeTab"
+    ],
+    "background": {
+      "service_worker": "js/background.js"
+    },
+    "action": {
+      "default_popup": "html/popup.html"
+    },
+    "options_page": "html/options.html"
+  }
+  
