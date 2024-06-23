@@ -1,3 +1,13 @@
-$primary: green; 
+$green-100: #E6F2EE;
+$green-200: #C0E0D5;
+$green-300: #99CDBC;
+$green-400: #4DA789;
+$green-500: #018157;
+$green-600: #01744E;
+$green-700: #014D34;
+$green-800: #003A27;
+
+$primary: $green-700; 
+$light: $green-100;
 
 @import '../node_modules/bootstrap/scss/bootstrap.scss';
