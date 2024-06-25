@@ -10,4 +10,15 @@ $green-800: #003A27;
 $primary: $green-700; 
 $light: $green-100;
 
+$display-font-sizes: (
+  1: 3.5rem,
+  2: 3rem,
+  3: 2.5rem,
+  4: 2rem,
+  5: 1.5rem,
+  6: 1rem
+);
+
+$table-striped-bg: #E6F2EE;
+
 @import '../node_modules/bootstrap/scss/bootstrap.scss';

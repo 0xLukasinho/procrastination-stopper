@@ -2,13 +2,117 @@
 <html>
   <head>
     <link rel="stylesheet" href="../CSS/main.css">
-    <link rel="stylesheet" href="../css/popup.css">
+    <link rel="stylesheet" href="../css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="../JS/popup.js"></script>
+    <script src="../JS/background.js"></script>
   </head>
-  <body>
-    <h1>Procrastination Stopper</h1>
-    <p>Track and limit your browsing time.</p>
-    <button class="btn btn-primary">Click Me</button>
-    <script src="../js/popup.js"></script>
+  <body class="bg-light my-3 mx-1" style="width:350px;height:500px">
+    <div class="container">
+      <h1 class="display-3">Procrastination Stopper</h1>
+      <div id="start">
+        <div id="stats" class="my-4">
+          <h2 class="display-5">Distraction Blocker</h2>
+          <p>Current page: <span id="currentPage"></span></p>
+          <p>Time spent: <span id="timeSpent"></span></p>
+          <p>Time left: <span id="timeLeft"></span></p>
+        </div>
+        <div id="pomodoro" class="my-4">
+          <h2 class="display-5">Pomodoro Timer</h2>
+          <p>Next break in: <span id="pomodoroTime"></span></p>
+          <button class="btn btn-primary">Start</button>
+        </div>
+        <div id="buttonBar" class="my-4 pt-3 d-flex justify-content-around">
+          <div class="text-center">
+            <button id="settingsBtn" class="custom-btn">
+              <i class="bi bi-gear"></i>
+            </button>
+            <button id="settingsBtn" class="plain-btn">Settings</button>
+          </div>
+          <div class="text-center">
+            <button id="analyticsBtn" class="custom-btn">
+              <i class="bi bi-bar-chart-line"></i>
+            </button>
+            <button id="analyticsBtn" class="plain-btn">Analytics</button>
+          </div>
+          <div class="text-center">
+            <button id="toggleExtension" class="custom-btn">
+              <i class="bi bi-power"></i>
+            </button>
+            <button id="toggleExtension" class="plain-btn">Turn off</button>
+          </div>
+        </div>
+      </div>
+      <div id="settings-content" style="display:none;">
+        <button class="btn btn-link" id="backBtn"><i class="bi bi-arrow-left me-2"></i>Back to Start</button>
+        <ul class="nav nav-tabs">
+          <li class="nav-item">
+            <a class="nav-link active" id="blockedPagesTab" href="#">Blocked Pages</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="pomodoroTimerTab" href="#">Pomodoro Timer</a>
+          </li>
+        </ul>
+        <div id="blockedPagesContent" class="settings-section p-3">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Website</th>
+                <th>Limit</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="limitedPagesTable">
+              <tr>
+                <td>Testsite</td>
+                <td>12h 13min</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Testsite</td>
+                <td>12h 13min</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Testsite</td>
+                <td>12h 13min</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Testsite</td>
+                <td>12h 13min</td>
+                <td></td>
+              </tr>
+              <!-- Rows created by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+        <div id="pomodoroTimerContent" class="settings-section p-3" style="display:none;">
+          <form id="pomodoroForm">
+            <div class="form-group my-3">
+              <label for="pomodoroTime">Pomodoro</label>
+              <input type="number" class="form-control text-right" id="pomodoroTime" value="25">minutes
+            </div>
+            <div class="form-group my-3">
+              <label for="shortBreak">Short Break</label>
+              <input type="number" class="form-control text-right" id="shortBreak" value="5" style="width:100px;">minutes
+            </div>
+            <div class="form-group my-2">
+              <label for="longBreak">Long Break</label>
+              <input type="number" class="form-control text-right" id="longBreak" value="25">minutes
+            </div>
+            <div class="form-check form-switch my-3">
+              <label for="autoStartBreak">Auto start breaks</label>
+              <input class="form-check-input" type="checkbox" id="autoStartBreak">
+            </div>
+            <div class="form-check form-switch my-3">
+              <label for="autoStartPomodoros">Auto start Pomodoros</label>
+              <input class="form-check-input" type="checkbox" id="autoStartPomodoros">
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

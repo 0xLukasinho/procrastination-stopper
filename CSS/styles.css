@@ -1,0 +1,105 @@
+
+/* Base Styling */
+body {
+  font-family: Roboto, sans-serif;
+  padding: 8px;
+}
+  
+button {
+  padding: 8px 12px!important;
+}
+
+/* Button Bar Styling */
+/* Custom Button CSS code was written with the help of ChatGPT. I made adjustments to the structure so it fits the design I wanted it to have */
+#buttonBar {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+#buttonBar .text-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.custom-btn {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background-color: #C0E0D5; 
+  border: none;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.custom-btn i {
+  font-size: 45px!important;
+  color: #014D34; 
+}
+
+.custom-btn:hover {
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.3);
+}
+
+.custom-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.5); 
+}
+
+.plain-btn {
+  border: none;
+  background-color: transparent;
+}
+
+.plain-btn:hover{
+  text-decoration: underline;
+}
+
+/* form styling - (Pomodoro Settings) */
+.form-group {
+  display: flex;
+  align-items: center;
+}
+
+.form-group label {
+  flex: 3;
+}
+
+.form-group input {
+  flex: 1;
+  margin-right: 10px;
+  width: 50px!important;
+}
+
+.form-group span {
+  flex: 1;
+}
+
+input {
+  text-align: right;
+}
+
+.settings-section {
+  background-color: #C0E0D5!important;
+}
+
+/* Table styling */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  background-color: #99CDBC; 
+  padding: 10px;
+  border-bottom: 1px solid #014D34;
+}
+
+.table td {
+  padding: 10px;
+}
