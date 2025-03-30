@@ -2,8 +2,6 @@
 
 A Chrome extension that helps you manage your browsing habits by tracking time spent on websites, setting custom time limits, and providing a built-in Pomodoro timer for improved productivity.
 
-![Procrastination Stopper](./src/images/icon128.png)
-
 ## Features
 
 - 📊 **Website Time Tracking**: Automatically monitors how long you spend on each website
