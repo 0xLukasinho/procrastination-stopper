@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Procrastination Stopper",
+  "version": "1.0",
+  "description": "Block distracting websites and manage your time with pomodoro technique",
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "action": {
+    "default_popup": "html/popup.html",
+    "default_icon": {
+      "16": "images/IconPS.png",
+      "48": "images/IconPS.png",
+      "128": "images/IconPS.png"
+    }
+  },
+  "icons": {
+    "16": "images/IconPS.png",
+    "48": "images/IconPS.png",
+    "128": "images/IconPS.png"
+  },
+  "options_page": "html/options.html",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["js/content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["html/blocked.html", "images/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+} 

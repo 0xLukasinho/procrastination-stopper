@@ -1,0 +1,480 @@
+:root {
+  --primary-color: #006837;
+  --primary-light: #d1e7dd;
+  --text-color: #333;
+  --bg-color: #f5f5f5;
+  --white: #ffffff;
+  --border-color: #ddd;
+  --danger-color: #dc3545;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-width: 600px;
+  max-width: 800px;
+  overflow-x: hidden;
+}
+
+header {
+  background-color: var(--primary-color);
+  color: var(--white);
+  padding: 15px 20px;
+  text-align: center;
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+main {
+  padding: 15px;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 15px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-color);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.tab-btn.active {
+  opacity: 1;
+  border-bottom: 3px solid var(--primary-color);
+}
+
+.tab-btn:hover {
+  opacity: 1;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.section {
+  background-color: var(--primary-light);
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: var(--primary-color);
+}
+
+h3 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: var(--primary-color);
+}
+
+.page-info {
+  background-color: var(--white);
+  border-radius: 5px;
+  padding: 10px 15px;
+}
+
+.info-line {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0;
+}
+
+.label {
+  font-weight: bold;
+}
+
+.table-tabs {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+.table-tab {
+  padding: 8px 15px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-color);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.table-tab.active {
+  opacity: 1;
+  border-bottom: 2px solid var(--primary-color);
+}
+
+.table-tab:hover {
+  opacity: 1;
+}
+
+.table-container {
+  display: none;
+}
+
+.table-container.active {
+  display: block;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--white);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 10px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+th {
+  background-color: var(--primary-color);
+  color: var(--white);
+  font-weight: bold;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.pagination button {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  padding: 5px 10px;
+  margin: 0 5px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.pagination span {
+  margin: 0 5px;
+}
+
+.add-btn {
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+.timer-settings {
+  background-color: var(--white);
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.timer-input {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  justify-content: space-between;
+}
+
+.timer-input label {
+  flex: 0 0 auto;
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.timer-input input[type="number"] {
+  width: 60px;
+  padding: 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  text-align: center;
+  margin-right: 5px;
+}
+
+.timer-input span {
+  margin-left: 5px;
+}
+
+/* Toggle switch styling */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 45px;
+  height: 24px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--primary-color);
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px var(--primary-color);
+}
+
+input:checked + .slider:before {
+  transform: translateX(21px);
+}
+
+.reset-btn {
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+  font-weight: bold;
+}
+
+#backToStart {
+  margin-bottom: 15px;
+}
+
+#backBtn {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.inner-tabs {
+  background-color: var(--white);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.inner-tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-color);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.inner-tab-btn.active {
+  opacity: 1;
+  background-color: var(--primary-color);
+  color: var(--white);
+}
+
+.inner-tab-content {
+  display: none;
+  padding: 15px;
+  background-color: var(--primary-light);
+  border-radius: 0 0 5px 5px;
+}
+
+.inner-tab-content.active {
+  display: block;
+}
+
+.edit-btn, .delete-btn {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-right: 5px;
+}
+
+.edit-btn {
+  color: var(--primary-color);
+}
+
+.delete-btn {
+  color: var(--danger-color);
+}
+
+footer {
+  background-color: var(--primary-light);
+  padding: 15px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--border-color);
+}
+
+.footer-icons {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  max-width: 250px;
+}
+
+.footer-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  color: var(--text-color);
+}
+
+.footer-btn img {
+  width: 30px;
+  height: 30px;
+  margin-bottom: 5px;
+  background-color: var(--primary-light);
+  padding: 5px;
+  border-radius: 50%;
+}
+
+.footer-btn:hover img {
+  background-color: var(--primary-color);
+  filter: brightness(2);
+}
+
+/* Fix hover issue by using z-index */
+.footer-btn:hover {
+  z-index: 10;
+}
+
+/* Timer display and controls */
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+#timerCircle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background-color: var(--secondary-color);
+  border: 3px solid var(--primary-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+#timerDisplay {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+#timerStatus {
+  font-size: 0.9rem;
+  margin-top: 5px;
+  color: var(--text-color);
+}
+
+.timer-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.timer-btn {
+  padding: 8px 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timer-btn:hover:not(:disabled) {
+  background: #e9e9e9;
+}
+
+.timer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.primary-btn:hover:not(:disabled) {
+  background-color: #005c31;
+}
+
+/* Timer circle auto-starting animation */
+#timerCircle.auto-starting {
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+} 

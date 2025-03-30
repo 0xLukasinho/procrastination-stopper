@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Procrastination Stopper</title>
+  <link rel="stylesheet" href="../css/popup.css">
+</head>
+<body>
+  <header>
+    <h1>Procrastination Stopper</h1>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button id="distractionBtn" class="tab-btn active">Distraction Blocker</button>
+      <button id="pomodoroBtn" class="tab-btn">Pomodoro Timer</button>
+    </div>
+
+    <div id="distractionBlocker" class="tab-content active">
+      <!-- Current Page Info Section -->
+      <div id="currentPage" class="section">
+        <h2>Distraction Blocker</h2>
+        <div class="page-info">
+          <div class="info-line">
+            <span class="label">Current page:</span>
+            <span id="currentUrl">-</span>
+          </div>
+          <div class="info-line">
+            <span class="label">Time spent:</span>
+            <span id="timeSpent">-</span>
+          </div>
+          <div class="info-line">
+            <span class="label">Time left:</span>
+            <span id="timeLeft">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Website Tracking Tables -->
+      <div id="websiteTables" class="section">
+        <div class="table-tabs">
+          <button id="timespentBtn" class="table-tab active">Time spent Browsing</button>
+          <button id="limitedBtn" class="table-tab">Limited Pages</button>
+        </div>
+
+        <!-- Time Spent Table -->
+        <div id="timeSpentTable" class="table-container active">
+          <table>
+            <thead>
+              <tr>
+                <th>Website</th>
+                <th>Today</th>
+                <th>Current week</th>
+                <th>4wk average</th>
+                <th>Limit</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="timeSpentBody">
+              <!-- Time spent data will be inserted here by JavaScript -->
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Page:</span>
+            <button class="prev-page">&#9664;</button>
+            <span id="currentPage-timespent">1</span>
+            <button class="next-page">&#9654;</button>
+          </div>
+        </div>
+
+        <!-- Limited Sites Table -->
+        <div id="limitedPagesTable" class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Website</th>
+                <th>Limit per day</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="limitedPagesBody">
+              <!-- Limited pages data will be inserted here by JavaScript -->
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Page:</span>
+            <button class="prev-page">&#9664;</button>
+            <span id="currentPage-limited">1</span>
+            <button class="next-page">&#9654;</button>
+          </div>
+          <button id="addLimitedPageBtn" class="add-btn">Add Limited Page</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pomodoroTimer" class="tab-content">
+      <div id="backToStart">
+        <a href="#" id="backBtn">&#9664; Back to Start</a>
+      </div>
+
+      <!-- Timer Display and Controls -->
+      <div class="timer-display">
+        <div id="timerCircle">
+          <span id="timerDisplay">25:00</span>
+          <span id="timerStatus">Pomodoro</span>
+        </div>
+        <div class="timer-controls">
+          <button id="startTimerBtn" class="timer-btn primary-btn">Start</button>
+          <button id="pauseTimerBtn" class="timer-btn" disabled>Pause</button>
+          <button id="resetTimerBtn" class="timer-btn" disabled>Reset</button>
+        </div>
+      </div>
+
+      <!-- Timer Settings -->
+      <div class="timer-settings">
+        <div class="timer-input">
+          <label for="pomodoroTime">Pomodoro</label>
+          <input type="number" id="pomodoroTime" min="1" max="120" value="25">
+          <span>minutes</span>
+        </div>
+        <div class="timer-input">
+          <label for="shortBreakTime">Short Break</label>
+          <input type="number" id="shortBreakTime" min="1" max="30" value="5">
+          <span>minutes</span>
+        </div>
+        <div class="timer-input">
+          <label for="longBreakTime">Long Break</label>
+          <input type="number" id="longBreakTime" min="5" max="60" value="15">
+          <span>minutes</span>
+        </div>
+        <div class="timer-input">
+          <label for="autoStartBreaksCheck">Auto start breaks</label>
+          <label class="switch">
+            <input type="checkbox" id="autoStartBreaksCheck">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="timer-input">
+          <label for="autoStartPomodorosCheck">Auto start pomodoros</label>
+          <label class="switch">
+            <input type="checkbox" id="autoStartPomodorosCheck" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="timer-input">
+          <label for="longBreakIntervalInput">long break interval</label>
+          <input type="number" id="longBreakIntervalInput" min="1" max="10" value="4">
+        </div>
+      </div>
+      <button id="resetDefaultsBtn2" class="reset-btn">Reset to default Pomodoro</button>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-icons">
+      <button id="settingsBtn" class="footer-btn">
+        <img src="../images/settings.svg" alt="Settings">
+        <span>Settings</span>
+      </button>
+      <button id="powerBtn" class="footer-btn">
+        <img src="../images/power.svg" alt="Turn Off">
+        <span>Turn Off</span>
+      </button>
+    </div>
+  </footer>
+
+  <script src="../js/popup.js"></script>
+</body>
+</html> 

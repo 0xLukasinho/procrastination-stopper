@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Options - Procrastination Stopper</title>
+  <link rel="stylesheet" href="../css/options.css">
+</head>
+<body>
+  <header>
+    <h1>Procrastination Stopper</h1>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button id="generalBtn" class="tab-btn active">General Settings</button>
+      <button id="websitesBtn" class="tab-btn">Website Management</button>
+      <button id="dataBtn" class="tab-btn">Data & Backup</button>
+    </div>
+
+    <!-- General Settings Tab -->
+    <div id="generalSettings" class="tab-content active">
+      <h2>General Settings</h2>
+      
+      <div class="settings-section">
+        <h3>Theme Settings</h3>
+        <div class="setting-item">
+          <label for="darkMode">Dark Mode</label>
+          <label class="switch">
+            <input type="checkbox" id="darkMode">
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Notification Settings</h3>
+        <div class="setting-item">
+          <label for="showNotifications">Show Notifications</label>
+          <label class="switch">
+            <input type="checkbox" id="showNotifications" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <label for="notificationSound">Play Sound</label>
+          <label class="switch">
+            <input type="checkbox" id="notificationSound">
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Extension Behavior</h3>
+        <div class="setting-item">
+          <label for="startAtBoot">Start tracking at browser startup</label>
+          <label class="switch">
+            <input type="checkbox" id="startAtBoot" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <label for="trackIncognito">Track incognito browsing</label>
+          <label class="switch">
+            <input type="checkbox" id="trackIncognito">
+            <span class="slider round"></span>
+          </label>
+          <p class="setting-note">Note: This requires enabling the extension in incognito mode</p>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Timer Settings</h3>
+        <div class="timer-settings">
+          <div class="timer-input">
+            <label for="pomodoroTime">Pomodoro Duration</label>
+            <input type="number" id="pomodoroTime" min="1" max="120" value="25">
+            <span>minutes</span>
+          </div>
+          <div class="timer-input">
+            <label for="shortBreakTime">Short Break Duration</label>
+            <input type="number" id="shortBreakTime" min="1" max="30" value="5">
+            <span>minutes</span>
+          </div>
+          <div class="timer-input">
+            <label for="longBreakTime">Long Break Duration</label>
+            <input type="number" id="longBreakTime" min="5" max="60" value="15">
+            <span>minutes</span>
+          </div>
+          <div class="timer-input">
+            <label for="longBreakInterval">Long Break Interval</label>
+            <input type="number" id="longBreakInterval" min="1" max="10" value="4">
+            <span>pomodoros</span>
+          </div>
+        </div>
+        <div class="setting-item">
+          <label for="autoStartBreaks">Auto-start breaks</label>
+          <label class="switch">
+            <input type="checkbox" id="autoStartBreaks">
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <label for="autoStartPomodoros">Auto-start pomodoros</label>
+          <label class="switch">
+            <input type="checkbox" id="autoStartPomodoros" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+        <button id="resetDefaultsBtn" class="btn secondary">Reset to Default</button>
+      </div>
+    </div>
+
+    <!-- Website Management Tab -->
+    <div id="websiteManagement" class="tab-content">
+      <h2>Website Management</h2>
+      
+      <div class="search-container">
+        <input type="text" id="websiteSearch" placeholder="Search websites...">
+      </div>
+      
+      <div class="website-list">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="domain" class="sortable">Website <span class="sort-icon"></span></th>
+              <th data-sort="timeSpent" class="sortable active desc">Time Spent <span class="sort-icon">▼</span></th>
+              <th data-sort="timeLimit" class="sortable">Time Limit <span class="sort-icon"></span></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="websiteTableBody">
+            <!-- Website data will be inserted here by JavaScript -->
+          </tbody>
+        </table>
+        <div class="pagination">
+          <span>Page:</span>
+          <button class="prev-page">&#9664;</button>
+          <span id="currentPage">1</span>
+          <button class="next-page">&#9654;</button>
+        </div>
+      </div>
+      
+      <div class="website-actions">
+        <button id="addWebsiteBtn" class="btn primary">Add Website</button>
+        <button id="clearAllDataBtn" class="btn secondary">Clear All Data</button>
+      </div>
+      
+      <div id="addWebsiteModal" class="modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h3>Add Website</h3>
+          <div class="form-group">
+            <label for="newWebsiteDomain">Website Domain</label>
+            <input type="text" id="newWebsiteDomain" placeholder="example.com">
+          </div>
+          <div class="form-group">
+            <label for="newWebsiteLimit">Time Limit (minutes per day)</label>
+            <input type="number" id="newWebsiteLimit" min="1" max="1440" value="60">
+          </div>
+          <div class="modal-actions">
+            <button id="saveNewWebsiteBtn" class="btn primary">Save</button>
+            <button id="cancelNewWebsiteBtn" class="btn secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+      
+      <div id="editWebsiteModal" class="modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <h3>Edit Website</h3>
+          <div class="form-group">
+            <label for="editWebsiteDomain">Website Domain</label>
+            <input type="text" id="editWebsiteDomain" readonly>
+          </div>
+          <div class="form-group">
+            <label for="editWebsiteLimit">Time Limit (minutes per day)</label>
+            <input type="number" id="editWebsiteLimit" min="1" max="1440">
+          </div>
+          <div class="modal-actions">
+            <button id="saveEditWebsiteBtn" class="btn primary">Save</button>
+            <button id="cancelEditWebsiteBtn" class="btn secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data & Backup Tab -->
+    <div id="dataBackup" class="tab-content">
+      <h2>Data Management</h2>
+      
+      <div class="settings-section">
+        <h3>Export Data</h3>
+        <p>Download your browsing data and settings as a JSON file.</p>
+        <button id="exportDataBtn" class="btn primary">Export Data</button>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Import Data</h3>
+        <p>Import previously exported data.</p>
+        <div class="import-container">
+          <input type="file" id="importFile" accept=".json">
+          <button id="importDataBtn" class="btn primary">Import Data</button>
+        </div>
+        <p class="setting-note">Note: Importing data will overwrite your current settings and browsing data.</p>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Reset Data</h3>
+        <p>Clear all browsing data and reset the extension to default settings.</p>
+        <button id="resetAllDataBtn" class="btn danger">Reset All Data</button>
+        <p class="setting-note">Warning: This action cannot be undone.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Procrastination Stopper</p>
+    <p>Version 1.0.0</p>
+  </footer>
+
+  <script src="../js/options.js"></script>
+</body>
+</html> 
