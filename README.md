@@ -109,4 +109,4 @@ See the [LICENSE](LICENSE) file for details.
 
 ## Credits
 
-Created by Procrastination Stopper Team 
+Created by 0xLukasinho
