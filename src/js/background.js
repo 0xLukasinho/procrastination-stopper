@@ -56,6 +56,7 @@ let forceContinueTracking = true; // Start with forced tracking ENABLED
 let lastTrackedTime = Date.now(); // When we last recorded time
 let lastActivityTime = Date.now(); // Last time we detected user activity in the browser
 let activityCheckInterval = null; // Interval to check for user activity
+let isRecovering = false;
 
 // Start the time tracking functionality
 function startTracking() {
@@ -134,8 +135,11 @@ function startTracking() {
   chrome.tabs.onActivated.addListener(activeInfo => {
     updateLastActivityTime();
     console.log('[DEBUG] Tab activated event:', activeInfo.tabId);
-    if (!isWindowActive) {
-      console.log('[DEBUG] Window not active, ignoring tab change');
+    
+    // Check if we've had recent activity (within last 5 seconds)
+    const timeSinceActivity = Date.now() - lastActivityTime;
+    if (timeSinceActivity > 5000) {
+      console.log('[DEBUG] No recent activity, ignoring tab change');
       return;
     }
     
@@ -175,8 +179,10 @@ function startTracking() {
       console.log('[DEBUG] Tab URL updated:', tabId, changeInfo.url);
     }
     
-    if (!isWindowActive) {
-      console.log('[DEBUG] Window not active, ignoring URL change');
+    // Check if we've had recent activity (within last 5 seconds)
+    const timeSinceActivity = Date.now() - lastActivityTime;
+    if (timeSinceActivity > 5000) {
+      console.log('[DEBUG] No recent activity, ignoring URL change');
       return;
     }
     
@@ -369,34 +375,45 @@ function checkDateChange() {
 
 // Handle the daily reset at midnight
 function handleDailyReset() {
-  console.log('[DEBUG] Performing daily reset');
+  console.log('[DEBUG] Starting daily reset');
   
-  // Get current websites data
-  chrome.storage.local.get('websites', (result) => {
-    if (!result.websites) return;
+  // Store current active tab info before reset
+  const previousActiveTab = activeTabId;
+  const previousStartTime = activeTabStartTime;
+  
+  // Clear all data
+  chrome.storage.local.clear(() => {
+    if (chrome.runtime.lastError) {
+      console.error('[ERROR] Failed to clear storage:', chrome.runtime.lastError);
+      return;
+    }
     
-    const websites = result.websites;
-    const today = new Date();
-    const dateString = today.toISOString().split('T')[0];
+    // Restore active tab state if it was valid
+    if (previousActiveTab && previousStartTime) {
+      chrome.tabs.get(previousActiveTab, (tab) => {
+        if (!chrome.runtime.lastError && tab) {
+          console.log('[DEBUG] Restoring previous active tab state');
+          activeTabId = previousActiveTab;
+          activeTabStartTime = previousStartTime;
+        }
+      });
+    }
     
-    // Reset daily usage for the new day
-    websites.forEach(website => {
-      if (!website.dailyUsage) {
-        website.dailyUsage = {};
-      }
-      
-      // Initialize the new day with zero time
-      website.dailyUsage[dateString] = 0;
-    });
+    // Reset other state variables
+    currentDateStr = new Date().toISOString().split('T')[0];
+    activeTabId = null;
+    activeTabStartTime = null;
+    lastActiveInfo = null;
+    knownTabs = new Set();
     
-    // Save updated websites data
-    chrome.storage.local.set({ websites }, () => {
-      if (chrome.runtime.lastError) {
-        console.log('[ERROR] Error saving reset website data:', chrome.runtime.lastError);
-      } else {
-        console.log('[DEBUG] Daily reset complete');
-      }
-    });
+    // Reinitialize tracking
+    setupDailyResetAlarm();
+    startBackupPolling();
+    
+    // Validate and recover state
+    validateAndRecoverState();
+    
+    console.log('[DEBUG] Daily reset completed');
   });
 }
 
@@ -795,6 +812,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return true; // For async response
       
+    case 'debug':
+      switch (message.command) {
+        case 'simulateReset':
+          console.log('[DEBUG] Simulating midnight reset...');
+          handleDailyReset();
+          sendResponse({ success: true, message: 'Reset simulation triggered' });
+          break;
+        case 'validateState':
+          console.log('[DEBUG] Validating current state...');
+          validateAndRecoverState();
+          sendResponse({ success: true, message: 'State validation triggered' });
+          break;
+        case 'getState':
+          const state = {
+            activeTabId,
+            activeTabStartTime,
+            currentDateStr,
+            lastActiveInfo,
+            knownTabs: Array.from(knownTabs)
+          };
+          sendResponse({ success: true, state });
+          break;
+        default:
+          sendResponse({ success: false, message: 'Unknown debug command' });
+      }
+      return true;
+      
     default:
       console.log('[DEBUG] Unknown message action:', message.action);
       sendResponse({ success: false, error: 'Unknown action' });
@@ -1020,4 +1064,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   // ...existing message handler code...
   return true;
-}); 
+});
+
+function validateAndRecoverState() {
+  if (isRecovering) return;
+  
+  isRecovering = true;
+  console.log('[DEBUG] Starting state validation and recovery');
+  
+  // Check if we have an active tab but no start time
+  if (activeTabId && !activeTabStartTime) {
+    console.log('[DEBUG] Found active tab without start time, recovering...');
+    activeTabStartTime = Date.now();
+  }
+  
+  // Check if we have a start time but no active tab
+  if (activeTabStartTime && !activeTabId) {
+    console.log('[DEBUG] Found start time without active tab, clearing...');
+    activeTabStartTime = null;
+  }
+  
+  // Check if we have an active tab that doesn't exist
+  if (activeTabId) {
+    chrome.tabs.get(activeTabId, (tab) => {
+      if (chrome.runtime.lastError) {
+        console.log('[DEBUG] Active tab no longer exists, clearing state...');
+        activeTabId = null;
+        activeTabStartTime = null;
+      }
+    });
+  }
+  
+  isRecovering = false;
+}
+
+// Add periodic state validation
+setInterval(() => {
+  validateAndRecoverState();
+}, 60000); // Check every minute 
