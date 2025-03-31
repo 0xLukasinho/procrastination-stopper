@@ -335,142 +335,152 @@ function loadCurrentPageInfo() {
   });
 }
 
-// Load time spent data
-function loadTimeSpentData() {
-  chrome.storage.local.get('websites', (result) => {
-    const websites = result.websites || [];
-    const tbody = document.getElementById('timeSpentBody');
+// Constants for pagination
+const ITEMS_PER_PAGE = 15;
+let currentTimeSpentPage = 1;
+let currentLimitedPage = 1;
+
+// Setup pagination for both tables
+function setupPagination() {
+  const timeSpentContainer = document.getElementById('timeSpentTable');
+  const limitedContainer = document.getElementById('limitedPagesTable');
+  
+  if (timeSpentContainer) {
+    const prevBtn = timeSpentContainer.querySelector('.prev-page');
+    const nextBtn = timeSpentContainer.querySelector('.next-page');
     
-    // Get dates for different periods
-    const today = new Date();
-    const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-    
-    // Get start of current week (Sunday is first day of week)
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay()); // Go back to Sunday
-    startOfWeek.setHours(0, 0, 0, 0);
-    
-    // Get date 4 weeks ago for average calculation
-    const fourWeeksAgo = new Date(today);
-    fourWeeksAgo.setDate(today.getDate() - 28);
-    
-    // Sort websites by today's usage (descending)
-    websites.sort((a, b) => {
-      const aUsage = a.dailyUsage && a.dailyUsage[dateString] ? a.dailyUsage[dateString] : 0;
-      const bUsage = b.dailyUsage && b.dailyUsage[dateString] ? b.dailyUsage[dateString] : 0;
-      return bUsage - aUsage;
+    prevBtn.addEventListener('click', () => {
+      if (currentTimeSpentPage > 1) {
+        currentTimeSpentPage--;
+        loadTimeSpentData();
+      }
     });
     
-    // Clear existing rows
-    tbody.innerHTML = '';
-    
-    // Add rows for each website
-    websites.forEach(website => {
-      const row = document.createElement('tr');
-      
-      // Get today's usage
-      const todayUsage = website.dailyUsage && website.dailyUsage[dateString] 
-        ? website.dailyUsage[dateString] 
-        : 0;
-      
-      // Calculate current week usage
-      let weekUsage = 0;
-      if (website.dailyUsage) {
-        const startDate = new Date(startOfWeek);
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateKey = date.toISOString().split('T')[0];
-          if (website.dailyUsage[dateKey]) {
-            weekUsage += website.dailyUsage[dateKey];
-          }
+    nextBtn.addEventListener('click', () => {
+      chrome.storage.local.get('websites', (result) => {
+        const websites = result.websites || [];
+        const maxPage = Math.ceil(websites.length / ITEMS_PER_PAGE);
+        if (currentTimeSpentPage < maxPage) {
+          currentTimeSpentPage++;
+          loadTimeSpentData();
         }
-      }
-      
-      // Calculate 4-week average (if we have data)
-      let fourWeekTotal = 0;
-      let daysWithData = 0;
-      if (website.dailyUsage) {
-        const startDate = new Date(fourWeeksAgo);
-        for (let i = 0; i < 28; i++) {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateKey = date.toISOString().split('T')[0];
-          if (website.dailyUsage[dateKey]) {
-            fourWeekTotal += website.dailyUsage[dateKey];
-            daysWithData++;
-          }
-        }
-      }
-      
-      // Average per day (only counting days with data)
-      const fourWeekAvg = daysWithData > 0 ? Math.floor(fourWeekTotal / daysWithData) : 0;
-      
-      // Website domain
-      const domainCell = document.createElement('td');
-      domainCell.textContent = website.domain;
-      row.appendChild(domainCell);
-      
-      // Today (today's usage)
-      const todayCell = document.createElement('td');
-      todayCell.textContent = formatTime(todayUsage);
-      row.appendChild(todayCell);
-      
-      // Current week
-      const weekCell = document.createElement('td');
-      weekCell.textContent = formatTime(weekUsage);
-      row.appendChild(weekCell);
-      
-      // 4 week average (per day)
-      const avgCell = document.createElement('td');
-      avgCell.textContent = daysWithData > 0 ? formatTime(fourWeekAvg) + '/day' : '-';
-      row.appendChild(avgCell);
-      
-      // Limit
-      const limitCell = document.createElement('td');
-      limitCell.textContent = website.timeLimit ? `${website.timeLimit}m/day` : 'Not set';
-      row.appendChild(limitCell);
-      
-      // Actions
-      const actionsCell = document.createElement('td');
-      const editBtn = document.createElement('button');
-      editBtn.className = 'edit-btn';
-      editBtn.innerHTML = '&#9998;';
-      editBtn.addEventListener('click', () => {
-        editWebsite(website.domain, website.timeLimit);
       });
-      actionsCell.appendChild(editBtn);
-      row.appendChild(actionsCell);
-      
-      tbody.appendChild(row);
     });
-  });
+  }
+  
+  if (limitedContainer) {
+    const prevBtn = limitedContainer.querySelector('.prev-page');
+    const nextBtn = limitedContainer.querySelector('.next-page');
+    
+    prevBtn.addEventListener('click', () => {
+      if (currentLimitedPage > 1) {
+        currentLimitedPage--;
+        loadLimitedPagesData();
+      }
+    });
+    
+    nextBtn.addEventListener('click', () => {
+      chrome.storage.local.get('websites', (result) => {
+        const websites = (result.websites || []).filter(site => site.timeLimit);
+        const maxPage = Math.ceil(websites.length / ITEMS_PER_PAGE);
+        if (currentLimitedPage < maxPage) {
+          currentLimitedPage++;
+          loadLimitedPagesData();
+        }
+      });
+    });
+  }
 }
 
-// Load limited pages data
-function loadLimitedPagesData() {
-  chrome.storage.local.get('websites', (result) => {
-    const websites = result.websites || [];
-    const limitedWebsites = websites.filter(site => site.timeLimit);
-    
-    // Sort by domain name
-    limitedWebsites.sort((a, b) => a.domain.localeCompare(b.domain));
-    
-    // Update limited pages table
-    updateLimitedPagesTable(limitedWebsites, 'limitedPagesBody');
-  });
-}
-
-// Update limited pages table
-function updateLimitedPagesTable(websites, tableId) {
-  const tbody = document.getElementById(tableId);
+// Update time spent table with pagination
+function updateTimeSpentTable(websites, page) {
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const pageItems = websites.slice(startIndex, endIndex);
+  
+  const tbody = document.getElementById('timeSpentBody');
   if (!tbody) return;
   
-  // Clear existing rows
   tbody.innerHTML = '';
   
-  // Add rows for each website
-  websites.forEach(website => {
+  pageItems.forEach(website => {
+    const row = document.createElement('tr');
+    
+    // Website domain
+    const domainCell = document.createElement('td');
+    domainCell.textContent = website.domain;
+    row.appendChild(domainCell);
+    
+    // Today's usage
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
+    const todayUsage = website.dailyUsage && website.dailyUsage[dateString] 
+      ? website.dailyUsage[dateString] 
+      : 0;
+    
+    const todayCell = document.createElement('td');
+    todayCell.textContent = formatTime(todayUsage);
+    row.appendChild(todayCell);
+    
+    // Current week usage
+    const weekCell = document.createElement('td');
+    weekCell.textContent = formatTime(calculateWeekUsage(website));
+    row.appendChild(weekCell);
+    
+    // 4 week average
+    const avgCell = document.createElement('td');
+    avgCell.textContent = formatTime(calculateFourWeekAverage(website)) + '/day';
+    row.appendChild(avgCell);
+    
+    // Limit
+    const limitCell = document.createElement('td');
+    limitCell.textContent = website.timeLimit ? `${website.timeLimit}m/day` : 'Not set';
+    row.appendChild(limitCell);
+    
+    // Actions
+    const actionsCell = document.createElement('td');
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.innerHTML = '&#9998;';
+    editBtn.addEventListener('click', () => {
+      editWebsite(website.domain, website.timeLimit);
+    });
+    actionsCell.appendChild(editBtn);
+    row.appendChild(actionsCell);
+    
+    tbody.appendChild(row);
+  });
+  
+  // Update pagination UI
+  const container = document.getElementById('timeSpentTable');
+  if (!container) return;
+  
+  const currentPageSpan = container.querySelector('#currentPage-timespent');
+  const prevBtn = container.querySelector('.prev-page');
+  const nextBtn = container.querySelector('.next-page');
+  
+  if (currentPageSpan) currentPageSpan.textContent = page;
+  if (prevBtn) prevBtn.disabled = page <= 1;
+  if (nextBtn) nextBtn.disabled = endIndex >= websites.length;
+  
+  const pagination = container.querySelector('.pagination');
+  if (pagination) {
+    pagination.style.display = websites.length > ITEMS_PER_PAGE ? 'flex' : 'none';
+  }
+}
+
+// Update limited pages table with pagination
+function updateLimitedPagesTable(websites, page) {
+  const startIndex = (page - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const pageItems = websites.slice(startIndex, endIndex);
+  
+  const tbody = document.getElementById('limitedPagesBody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  pageItems.forEach(website => {
     const row = document.createElement('tr');
     
     // Website domain
@@ -485,8 +495,6 @@ function updateLimitedPagesTable(websites, tableId) {
     
     // Actions
     const actionsCell = document.createElement('td');
-    
-    // Edit button
     const editBtn = document.createElement('button');
     editBtn.className = 'edit-btn';
     editBtn.innerHTML = '&#9998;';
@@ -495,7 +503,6 @@ function updateLimitedPagesTable(websites, tableId) {
     });
     actionsCell.appendChild(editBtn);
     
-    // Delete button
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.innerHTML = '&#128465;';
@@ -505,8 +512,51 @@ function updateLimitedPagesTable(websites, tableId) {
     actionsCell.appendChild(deleteBtn);
     
     row.appendChild(actionsCell);
-    
     tbody.appendChild(row);
+  });
+  
+  // Update pagination UI
+  const container = document.getElementById('limitedPagesTable');
+  if (!container) return;
+  
+  const currentPageSpan = container.querySelector('#currentPage-limited');
+  const prevBtn = container.querySelector('.prev-page');
+  const nextBtn = container.querySelector('.next-page');
+  
+  if (currentPageSpan) currentPageSpan.textContent = page;
+  if (prevBtn) prevBtn.disabled = page <= 1;
+  if (nextBtn) nextBtn.disabled = endIndex >= websites.length;
+  
+  const pagination = container.querySelector('.pagination');
+  if (pagination) {
+    pagination.style.display = websites.length > ITEMS_PER_PAGE ? 'flex' : 'none';
+  }
+}
+
+// Load time spent data with pagination
+function loadTimeSpentData() {
+  chrome.storage.local.get('websites', (result) => {
+    let websites = result.websites || [];
+    
+    // Sort by time spent today (most used first)
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0];
+    
+    websites.sort((a, b) => {
+      const timeA = a.dailyUsage && a.dailyUsage[dateString] ? a.dailyUsage[dateString] : 0;
+      const timeB = b.dailyUsage && b.dailyUsage[dateString] ? b.dailyUsage[dateString] : 0;
+      return timeB - timeA; // Sort in descending order (most used first)
+    });
+    
+    updateTimeSpentTable(websites, currentTimeSpentPage);
+  });
+}
+
+// Load limited pages data with pagination
+function loadLimitedPagesData() {
+  chrome.storage.local.get('websites', (result) => {
+    const websites = (result.websites || []).filter(site => site.timeLimit);
+    updateLimitedPagesTable(websites, currentLimitedPage);
   });
 }
 
@@ -555,12 +605,6 @@ function resetPomodoroDefaults() {
   chrome.storage.local.set({ pomodoroSettings: defaultSettings }, () => {
     loadPomodoroSettings();
   });
-}
-
-// Setup pagination
-function setupPagination() {
-  // Pagination functionality would go here
-  // For this demo, we're not implementing full pagination
 }
 
 // Format time in seconds to a human-readable format
@@ -998,4 +1042,47 @@ function resetPomodoro() {
     document.getElementById('pauseTimerBtn').disabled = true;
     document.getElementById('resetTimerBtn').disabled = true;
   });
+}
+
+// Helper function to calculate week usage
+function calculateWeekUsage(website) {
+  let weekUsage = 0;
+  if (website.dailyUsage) {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      const dateKey = date.toISOString().split('T')[0];
+      if (website.dailyUsage[dateKey]) {
+        weekUsage += website.dailyUsage[dateKey];
+      }
+    }
+  }
+  return weekUsage;
+}
+
+// Helper function to calculate 4-week average
+function calculateFourWeekAverage(website) {
+  let total = 0;
+  let daysWithData = 0;
+  if (website.dailyUsage) {
+    const today = new Date();
+    const fourWeeksAgo = new Date(today);
+    fourWeeksAgo.setDate(today.getDate() - 28);
+    
+    for (let i = 0; i < 28; i++) {
+      const date = new Date(fourWeeksAgo);
+      date.setDate(fourWeeksAgo.getDate() + i);
+      const dateKey = date.toISOString().split('T')[0];
+      if (website.dailyUsage[dateKey]) {
+        total += website.dailyUsage[dateKey];
+        daysWithData++;
+      }
+    }
+  }
+  return daysWithData > 0 ? Math.floor(total / daysWithData) : 0;
 } 

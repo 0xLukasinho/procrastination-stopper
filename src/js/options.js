@@ -13,9 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // Set up initial sort state
   updateSortUI();
   
-  // Load websites with current sort settings
-  loadWebsiteData();
-  
   // Initialize dark mode
   chrome.storage.local.get('settings', (result) => {
     if (result.settings && result.settings.darkMode) {
@@ -23,6 +20,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
+
+// Constants for pagination
+const ITEMS_PER_PAGE = 15;
+let currentPage = 1;
 
 // Track current sort state
 let currentSort = {
@@ -91,63 +92,207 @@ function loadGeneralSettings() {
 
 // Load website data
 function loadWebsiteData() {
-  chrome.storage.local.get('websites', (result) => {
-    const websites = result.websites || [];
-    const tbody = document.getElementById('websiteTableBody');
+  chrome.storage.local.get(['websites', 'searchTerm', 'sortColumn', 'sortDirection'], (result) => {
+    let websites = result.websites || [];
+    const searchTerm = result.searchTerm || '';
+    const sortColumn = result.sortColumn || 'timeSpent';
+    const sortDirection = result.sortDirection || 'desc';
     
-    // Sort websites based on current sort settings
-    sortWebsites(websites);
+    // Apply search filter if exists
+    if (searchTerm) {
+      websites = websites.filter(site => 
+        site.domain.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
     
-    // Clear existing rows
-    tbody.innerHTML = '';
+    // Sort websites using the same logic as sortWebsites
+    websites.sort((a, b) => {
+      let result = 0;
+      
+      // Sort based on column
+      if (sortColumn === 'domain') {
+        const domainA = String(a.domain || '').toLowerCase();
+        const domainB = String(b.domain || '').toLowerCase();
+        result = domainA.localeCompare(domainB);
+      } 
+      else if (sortColumn === 'timeSpent') {
+        // Calculate total time from dailyUsage for both websites
+        let timeA = 0;
+        let timeB = 0;
+        
+        if (a.dailyUsage) {
+          timeA = Object.values(a.dailyUsage).reduce((sum, time) => sum + time, 0);
+        }
+        if (b.dailyUsage) {
+          timeB = Object.values(b.dailyUsage).reduce((sum, time) => sum + time, 0);
+        }
+        
+        result = timeA - timeB;
+      }
+      else if (sortColumn === 'timeLimit') {
+        // Special handling for timeLimit sorting
+        // If both have limits, compare them normally
+        if (a.timeLimit && b.timeLimit) {
+          result = Number(a.timeLimit) - Number(b.timeLimit);
+        }
+        // If only a has a limit, a comes first
+        else if (a.timeLimit && !b.timeLimit) {
+          result = -1;
+        }
+        // If only b has a limit, b comes first
+        else if (!a.timeLimit && b.timeLimit) {
+          result = 1;
+        }
+        // If neither has a limit, they're equal
+        else {
+          result = 0;
+        }
+      }
+      
+      // Apply sort direction
+      return sortDirection === 'asc' ? result : -result;
+    });
     
-    // Add rows for each website
-    websites.forEach(website => {
-      const row = document.createElement('tr');
+    // Calculate max page and validate current page
+    const maxPage = Math.ceil(websites.length / ITEMS_PER_PAGE) || 1;
+    if (currentPage > maxPage) {
+      currentPage = maxPage;
+    }
+    
+    // Update table and pagination
+    updateWebsiteTable(websites);
+  });
+}
+
+// Update website table with pagination
+function updateWebsiteTable(websites) {
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const pageItems = websites.slice(startIndex, endIndex);
+  
+  const tbody = document.getElementById('websiteTableBody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  pageItems.forEach(website => {
+    const row = document.createElement('tr');
+    
+    // Website domain cell
+    const domainCell = document.createElement('td');
+    domainCell.textContent = website.domain;
+    row.appendChild(domainCell);
+    
+    // Time spent cell - calculate total from dailyUsage
+    const timeSpentCell = document.createElement('td');
+    let totalTime = 0;
+    
+    if (website.dailyUsage) {
+      totalTime = Object.values(website.dailyUsage).reduce((sum, time) => sum + time, 0);
+    }
+    
+    timeSpentCell.textContent = formatTime(totalTime);
+    timeSpentCell.dataset.seconds = totalTime;
+    row.appendChild(timeSpentCell);
+    
+    // Time limit cell
+    const timeLimitCell = document.createElement('td');
+    timeLimitCell.textContent = website.timeLimit ? `${website.timeLimit} minutes` : 'No limit';
+    timeLimitCell.dataset.minutes = website.timeLimit || 0;
+    row.appendChild(timeLimitCell);
+    
+    // Actions cell
+    const actionsCell = document.createElement('td');
+    
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.innerHTML = '✎';
+    editBtn.title = 'Edit';
+    editBtn.onclick = () => showEditWebsiteModal(website.domain, website.timeLimit);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.innerHTML = '×';
+    deleteBtn.title = 'Delete';
+    deleteBtn.onclick = () => deleteWebsite(website.domain);
+    
+    actionsCell.appendChild(editBtn);
+    actionsCell.appendChild(deleteBtn);
+    row.appendChild(actionsCell);
+    
+    tbody.appendChild(row);
+  });
+  
+  // Update pagination UI
+  const websiteList = document.querySelector('.website-list');
+  if (!websiteList) return;
+  
+  const currentPageSpan = websiteList.querySelector('#currentPage');
+  const prevBtn = websiteList.querySelector('.prev-page');
+  const nextBtn = websiteList.querySelector('.next-page');
+  
+  if (currentPageSpan) currentPageSpan.textContent = currentPage;
+  if (prevBtn) prevBtn.disabled = currentPage <= 1;
+  if (nextBtn) nextBtn.disabled = endIndex >= websites.length;
+  
+  const pagination = websiteList.querySelector('.pagination');
+  if (pagination) {
+    pagination.style.display = websites.length > ITEMS_PER_PAGE ? 'flex' : 'none';
+  }
+}
+
+// Setup pagination
+function setupPagination() {
+  const websiteList = document.querySelector('.website-list');
+  if (!websiteList) return;
+  
+  const prevBtn = websiteList.querySelector('.prev-page');
+  const nextBtn = websiteList.querySelector('.next-page');
+  
+  if (!prevBtn || !nextBtn) {
+    console.error('Pagination elements not found');
+    return;
+  }
+  
+  // Previous page button
+  prevBtn.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      loadWebsiteData();
+    }
+  });
+  
+  // Next page button
+  nextBtn.addEventListener('click', () => {
+    chrome.storage.local.get(['websites', 'searchTerm', 'sortColumn', 'sortDirection'], (result) => {
+      let websites = result.websites || [];
+      const searchTerm = result.searchTerm || '';
+      const sortColumn = result.sortColumn || 'timeSpent';
+      const sortDirection = result.sortDirection || 'desc';
       
-      // Website domain
-      const domainCell = document.createElement('td');
-      domainCell.textContent = website.domain;
-      row.appendChild(domainCell);
+      // Apply same filtering as in loadWebsiteData
+      if (searchTerm) {
+        websites = websites.filter(site => 
+          site.domain.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
       
-      // Time spent
-      const timeSpentCell = document.createElement('td');
-      timeSpentCell.textContent = formatTime(website.timeSpent || 0);
-      timeSpentCell.dataset.seconds = website.timeSpent || 0; // Store raw value for sorting
-      row.appendChild(timeSpentCell);
-      
-      // Time limit
-      const limitCell = document.createElement('td');
-      limitCell.textContent = website.timeLimit ? `${website.timeLimit} min/day` : 'No limit';
-      limitCell.dataset.minutes = website.timeLimit || 0; // Store raw value for sorting
-      row.appendChild(limitCell);
-      
-      // Actions
-      const actionsCell = document.createElement('td');
-      
-      // Edit button
-      const editBtn = document.createElement('button');
-      editBtn.className = 'edit-btn';
-      editBtn.innerHTML = '&#9998;';
-      editBtn.title = 'Edit';
-      editBtn.addEventListener('click', () => {
-        showEditWebsiteModal(website.domain, website.timeLimit);
+      // Apply same sorting as in loadWebsiteData
+      websites.sort((a, b) => {
+        const aValue = a[sortColumn];
+        const bValue = b[sortColumn];
+        if (sortDirection === 'asc') {
+          return aValue > bValue ? 1 : -1;
+        } else {
+          return aValue < bValue ? 1 : -1;
+        }
       });
-      actionsCell.appendChild(editBtn);
       
-      // Delete button
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'delete-btn';
-      deleteBtn.innerHTML = '&#128465;';
-      deleteBtn.title = 'Delete';
-      deleteBtn.addEventListener('click', () => {
-        deleteWebsite(website.domain);
-      });
-      actionsCell.appendChild(deleteBtn);
-      
-      row.appendChild(actionsCell);
-      
-      tbody.appendChild(row);
+      const maxPage = Math.ceil(websites.length / ITEMS_PER_PAGE);
+      if (currentPage < maxPage) {
+        currentPage++;
+        loadWebsiteData();
+      }
     });
   });
 }
@@ -168,8 +313,17 @@ function sortWebsites(websites) {
       result = domainA.localeCompare(domainB);
     } 
     else if (currentSort.column === 'timeSpent') {
-      const timeA = Number(a.timeSpent || 0);
-      const timeB = Number(b.timeSpent || 0);
+      // Calculate total time from dailyUsage for both websites
+      let timeA = 0;
+      let timeB = 0;
+      
+      if (a.dailyUsage) {
+        timeA = Object.values(a.dailyUsage).reduce((sum, time) => sum + time, 0);
+      }
+      if (b.dailyUsage) {
+        timeB = Object.values(b.dailyUsage).reduce((sum, time) => sum + time, 0);
+      }
+      
       result = timeA - timeB;
     }
     else if (currentSort.column === 'timeLimit') {
@@ -180,11 +334,11 @@ function sortWebsites(websites) {
       }
       // If only a has a limit, a comes first
       else if (a.timeLimit && !b.timeLimit) {
-        result = -1; // a comes before b
+        result = -1;
       }
       // If only b has a limit, b comes first
       else if (!a.timeLimit && b.timeLimit) {
-        result = 1; // b comes before a
+        result = 1;
       }
       // If neither has a limit, they're equal
       else {
@@ -266,7 +420,6 @@ function setupEventListeners() {
 // Setup sortable columns
 function setupSortableColumns() {
   document.querySelectorAll('th.sortable').forEach(header => {
-    // Add direct click handler to each sortable header
     header.onclick = function() {
       const column = this.getAttribute('data-sort');
       
@@ -274,14 +427,18 @@ function setupSortableColumns() {
       if (currentSort.column === column) {
         currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
       } else {
-        // New column, set appropriate default direction
         currentSort.column = column;
         currentSort.direction = (column === 'domain') ? 'asc' : 'desc';
       }
       
-      // Update UI and reload data with new sort
-      updateSortUI();
-      loadWebsiteData();
+      // Save sort state to storage
+      chrome.storage.local.set({
+        sortColumn: currentSort.column,
+        sortDirection: currentSort.direction
+      }, () => {
+        updateSortUI();
+        loadWebsiteData();  // Reload data with new sort
+      });
     };
   });
 }
@@ -432,7 +589,6 @@ function saveNewWebsite() {
     
     chrome.storage.local.set({ websites: websites }, () => {
       document.getElementById('addWebsiteModal').style.display = 'none';
-      loadWebsiteData();
     });
   });
 }
@@ -461,7 +617,6 @@ function saveEditWebsite() {
       
       chrome.storage.local.set({ websites: websites }, () => {
         document.getElementById('editWebsiteModal').style.display = 'none';
-        loadWebsiteData();
       });
     }
   });
@@ -477,7 +632,6 @@ function deleteWebsite(domain) {
       websites = websites.filter(site => site.domain !== domain);
       
       chrome.storage.local.set({ websites: websites }, () => {
-        loadWebsiteData();
       });
     });
   }
@@ -486,24 +640,16 @@ function deleteWebsite(domain) {
 // Filter websites based on search input
 function filterWebsites() {
   const searchTerm = document.getElementById('websiteSearch').value.toLowerCase();
-  const rows = document.getElementById('websiteTableBody').getElementsByTagName('tr');
-  
-  for (let i = 0; i < rows.length; i++) {
-    const domain = rows[i].getElementsByTagName('td')[0].textContent.toLowerCase();
-    
-    if (domain.includes(searchTerm)) {
-      rows[i].style.display = '';
-    } else {
-      rows[i].style.display = 'none';
-    }
-  }
+  chrome.storage.local.set({ searchTerm }, () => {
+    currentPage = 1;
+    loadWebsiteData();
+  });
 }
 
 // Confirm clear all website data
 function confirmClearAllData() {
   if (confirm('Are you sure you want to clear all website data? This will reset all time tracking information.')) {
     chrome.storage.local.set({ websites: [] }, () => {
-      loadWebsiteData();
     });
   }
 }
@@ -599,7 +745,6 @@ function confirmResetAllData() {
 
 // Set up tab navigation
 function setupTabs() {
-  // Tab navigation
   const generalBtn = document.getElementById('generalBtn');
   const websitesBtn = document.getElementById('websitesBtn');
   const dataBtn = document.getElementById('dataBtn');
@@ -627,6 +772,9 @@ function setupTabs() {
     websiteManagement.classList.add('active');
     dataBackup.classList.remove('active');
     
+    // Initialize website management tab
+    currentPage = 1;
+    setupPagination();
     loadWebsiteData();
   });
   

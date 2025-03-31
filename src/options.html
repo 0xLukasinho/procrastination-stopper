@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Procrastination Stopper Options</title>
+  <link rel="stylesheet" href="css/options.css">
+</head>
+<body>
+  <div class="container">
+    <div class="tabs">
+      <button id="generalBtn" class="active">General Settings</button>
+      <button id="websitesBtn">Website Management</button>
+      <button id="dataBtn">Data & Backup</button>
+    </div>
+    
+    <div id="generalSettings" class="tab-content active">
+      <!-- ... existing general settings content ... -->
+    </div>
+    
+    <div id="websiteManagement" class="tab-content">
+      <div class="website-list">
+        <div class="search-bar">
+          <input type="text" id="websiteSearch" placeholder="Search websites...">
+          <button id="addWebsiteBtn">Add Website</button>
+        </div>
+        
+        <table id="websiteTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="domain">Website <span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="timeSpent">Time Spent <span class="sort-icon"></span></th>
+              <th class="sortable" data-sort="timeLimit">Time Limit <span class="sort-icon"></span></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="websiteTableBody"></tbody>
+        </table>
+        
+        <div class="pagination">
+          <button class="prev-page" id="prevPage">←</button>
+          <span id="currentPage">1</span>
+          <button class="next-page" id="nextPage">→</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="dataBackup" class="tab-content">
+      <!-- ... existing data backup content ... -->
+    </div>
+  </div>
+  
+  <!-- ... existing modals ... -->
+  
+  <script src="js/websiteTable.js"></script>
+  <script src="js/options.js"></script>
+</body>
+</html> 

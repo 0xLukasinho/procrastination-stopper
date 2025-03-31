@@ -13,6 +13,17 @@ function throttle(callback, delay) {
   };
 }
 
+// Debounce function to wait until activity stops
+function debounce(callback, delay) {
+  let timeoutId;
+  return function(...args) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  };
+}
+
 // Function to notify background script of activity
 function reportActivity() {
   chrome.runtime.sendMessage({ action: 'userActivity' })
@@ -21,13 +32,16 @@ function reportActivity() {
     });
 }
 
-// Throttled version to avoid excessive messages
-const throttledReportActivity = throttle(reportActivity, 3000);
+// Throttled version to avoid excessive messages for continuous events
+const throttledReportActivity = throttle(reportActivity, 5000); // 5 seconds for continuous events
+
+// Debounced version for typing events
+const debouncedReportActivity = debounce(reportActivity, 4000); // 4 seconds for typing
 
 // Listen for user interaction events
 document.addEventListener('mousemove', throttledReportActivity);
 document.addEventListener('mousedown', reportActivity); // Immediate on clicks
-document.addEventListener('keydown', reportActivity);   // Immediate on key presses
+document.addEventListener('keydown', debouncedReportActivity); // Debounced for typing
 document.addEventListener('scroll', throttledReportActivity);
 
 // Also report activity when page loads
