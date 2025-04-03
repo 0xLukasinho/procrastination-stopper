@@ -27,6 +27,14 @@ const ACTIVITY_CONFIG = {
   HEARTBEAT_INTERVAL: 60000,           // Send state updates every 60 seconds
 };
 
+// Website Blocking Config
+const BLOCKING_CONFIG = {
+  CHECK_INTERVAL: 5000,        // Check if site should be blocked every 5 seconds
+  GRACE_PERIOD: 5000,          // Grace period after limit reached before blocking
+  OVERRIDE_ENABLED: true,      // Allow temporary override of blocking
+  OVERRIDE_DURATION: 300000,   // Override duration in ms (5 minutes)
+};
+
 // Time Tracking Config
 const TIME_CONFIG = {
   MIN_TIME_TO_TRACK: 1000,      // Minimum milliseconds to track (avoid micro-intervals)
@@ -48,6 +56,12 @@ let lastActivityTime = Date.now();
 let lastStateChangeTime = Date.now();
 let windowFocused = true;
 let activityCheckInterval = null;
+
+// Website Blocking State
+let blockingEnabled = true;
+let overrideExpirations = {}; // Domain -> expiration time map
+let blockedTabRedirects = new Set(); // Set of tab IDs being redirected
+let blockingCheckInterval = null;
 
 // Active Tab Info
 let activeTabId = null;
@@ -78,7 +92,9 @@ const DEFAULT_SETTINGS = {
   autoStartBreaks: false,
   autoStartPomodoros: false,
   longBreakInterval: 4,   // pomodoros
-  notificationsEnabled: true
+  notificationsEnabled: true,
+  blockingEnabled: true,  // Allow disabling blocking entirely
+  graceNotifications: true // Show notification when approaching limit
 };
 
 // Current settings
@@ -101,6 +117,9 @@ function initialize() {
   
   // Setup time tracking
   setupTimeTracking();
+  
+  // Setup website blocking
+  setupWebsiteBlocking();
   
   // Setup message listeners
   setupMessageListeners();
@@ -201,19 +220,23 @@ function handleTabUpdated(tabId, changeInfo, tab) {
 function handleWindowFocusChanged(windowId) {
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     // Window lost focus
-    log('Window lost focus');
+    log('[WINDOW] Lost focus');
     windowFocused = false;
     
     // Save time spent on current tab
     if (activeTabId !== null && activeTabDomain !== null) {
+      log(`[WINDOW] Saving time for ${activeTabDomain} before losing focus`);
       saveCurrentDomainTime();
+      // Explicitly pause tracking when window loses focus
+      pauseTracking('window lost focus');
     }
     
-    // Don't change state here - let the activity check do it
+    // Immediately transition to inactive state
+    transitionTo(ActivityState.INACTIVE);
     
   } else {
     // Window gained focus
-    log('Window gained focus');
+    log('[WINDOW] Gained focus');
     windowFocused = true;
     recordActivity();
     
@@ -296,21 +319,26 @@ function transitionTo(newState) {
   // Handle state entry actions
   switch (newState) {
     case ActivityState.ACTIVE:
-      // Nothing special needed
+      // Resume tracking if we have an active domain
+      if (currentTrackedDomain && !isTracking) {
+        startTracking(currentTrackedDomain);
+      }
       break;
       
     case ActivityState.PASSIVE:
-      // Nothing special needed
+      // Remain in tracking state
       break;
       
     case ActivityState.INACTIVE:
-      // Save current tab time when going inactive
+      // Save current tab time and stop tracking when going inactive
       saveCurrentDomainTime();
+      pauseTracking('became inactive');
       break;
       
     case ActivityState.IDLE:
-      // Save current tab time when going idle
+      // Save current tab time and stop tracking when going idle
       saveCurrentDomainTime();
+      pauseTracking('became idle');
       break;
   }
 }
@@ -319,16 +347,20 @@ function transitionTo(newState) {
 function recordActivity() {
   lastActivityTime = Date.now();
   
-  // If we're not in ACTIVE state, transition to it
-  if (activityState !== ActivityState.ACTIVE) {
+  // If we're not in ACTIVE state, but window is focused, transition to ACTIVE
+  if (activityState !== ActivityState.ACTIVE && windowFocused) {
     transitionTo(ActivityState.ACTIVE);
+  } else if (!windowFocused && activityState !== ActivityState.INACTIVE) {
+    // If window is not focused but we're not in INACTIVE state, force the correction
+    log('[ACTIVITY] Detected activity but window not focused, ensuring inactive state');
+    transitionTo(ActivityState.INACTIVE);
   }
 }
 
 // Send activity heartbeat
 function sendActivityHeartbeat() {
-  // No need to do anything here since we're not communicating with a component
-  log('Activity heartbeat');
+  // Include more diagnostic information
+  log(`[HEARTBEAT] State: ${activityState}, Window focused: ${windowFocused}, Tracking: ${isTracking}, Domain: ${currentTrackedDomain}`);
 }
 
 // Set the active tab
@@ -374,7 +406,9 @@ function extractDomain(url) {
 function setupTimeTracking() {
   // Start periodic updates
   setInterval(() => {
-    if (isTracking) {
+    // Only update time if we're actually tracking and window is focused
+    if (isTracking && windowFocused && 
+        (activityState === ActivityState.ACTIVE || activityState === ActivityState.PASSIVE)) {
       updateTimeWithoutStopping();
     }
   }, TIME_CONFIG.UPDATE_INTERVAL);
@@ -425,6 +459,12 @@ function saveCurrentDomainTime() {
 
 // Update time without stopping tracking
 function updateTimeWithoutStopping() {
+  // Skip updates if we're in inactive or idle state
+  if (activityState === ActivityState.INACTIVE || activityState === ActivityState.IDLE) {
+    log(`[TIME] Skipping time update because state is ${activityState}`);
+    return;
+  }
+  
   if (!isTracking || !currentTrackedDomain || !trackingStartTime) {
     return;
   }
@@ -565,6 +605,224 @@ function handleDailyReset() {
   // Any daily reset tasks go here
 }
 
+// ===== WEBSITE BLOCKING =====
+
+// Setup website blocking
+function setupWebsiteBlocking() {
+  // Listen for tab updates to check for blocking
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // Only check completed page loads with URLs
+    if (changeInfo.status === 'complete' && tab.url) {
+      checkIfShouldBlockTab(tabId, tab.url);
+    }
+  });
+  
+  // Set up periodic checks for active tab
+  blockingCheckInterval = setInterval(() => {
+    checkActiveTabForBlocking();
+  }, BLOCKING_CONFIG.CHECK_INTERVAL);
+  
+  log('[BLOCKING] Website blocking initialized');
+}
+
+// Check if active tab should be blocked
+function checkActiveTabForBlocking() {
+  if (!activeTabId || !activeTabDomain || !blockingEnabled || !settings.blockingEnabled) {
+    return;
+  }
+  
+  // Don't check browser internal pages
+  if (isInternalBrowserPage(activeTabDomain)) {
+    return;
+  }
+  
+  // Get current time spent today
+  getWebsiteTimeSpent(activeTabDomain, (timeData) => {
+    // Check if this site has a limit
+    hasTimeLimitBeenExceeded(activeTabDomain, timeData.today, (isExceeded, limit) => {
+      if (isExceeded) {
+        log(`[BLOCKING] Time limit exceeded for ${activeTabDomain}: ${timeData.today}s/${limit * 60}s`);
+        
+        // Check if there's an active override
+        if (isOverrideActive(activeTabDomain)) {
+          log(`[BLOCKING] Override active for ${activeTabDomain}, not blocking`);
+          return;
+        }
+        
+        // Block the tab
+        blockTab(activeTabId, activeTabDomain, timeData.today, limit);
+      }
+    });
+  });
+}
+
+// Get time spent for a website
+function getWebsiteTimeSpent(domain, callback) {
+  chrome.storage.local.get(['websites'], (result) => {
+    const websites = result.websites || [];
+    const website = websites.find(site => site.domain === domain);
+    
+    if (!website) {
+      callback({ total: 0, today: 0 });
+      return;
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const todayUsage = website.dailyUsage && website.dailyUsage[today] 
+      ? website.dailyUsage[today] : 0;
+    
+    callback({ 
+      total: website.timeSpent || 0,
+      today: todayUsage
+    });
+  });
+}
+
+// Check if a website's time limit has been exceeded
+function hasTimeLimitBeenExceeded(domain, timeSpentSeconds, callback) {
+  chrome.storage.local.get(['websites'], (result) => {
+    const websites = result.websites || [];
+    const website = websites.find(site => site.domain === domain);
+    
+    // If no website or no time limit, not exceeded
+    if (!website || !website.timeLimit) {
+      callback(false, null);
+      return;
+    }
+    
+    // Convert timeLimit from minutes to seconds
+    const limitInSeconds = website.timeLimit * 60;
+    
+    // Check if time spent exceeds limit
+    const isExceeded = timeSpentSeconds >= limitInSeconds;
+    
+    callback(isExceeded, website.timeLimit);
+  });
+}
+
+// Block a tab by redirecting to blocked.html
+function blockTab(tabId, domain, timeSpent, limit) {
+  // Don't redirect if we're already redirecting this tab
+  if (blockedTabRedirects.has(tabId)) {
+    return;
+  }
+  
+  log(`[BLOCKING] Blocking tab ${tabId} for domain ${domain}`);
+  
+  // Get the tab to get its URL
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError) {
+      log(`[BLOCKING] Error getting tab info: ${chrome.runtime.lastError.message}`);
+      return;
+    }
+    
+    // Add to set of tabs being redirected
+    blockedTabRedirects.add(tabId);
+    
+    // Create blocked page URL with parameters
+    const blockedPageUrl = chrome.runtime.getURL(
+      `html/blocked.html?domain=${encodeURIComponent(domain)}` +
+      `&timeSpent=${timeSpent}` +
+      `&limit=${limit}` +
+      `&url=${encodeURIComponent(tab.url)}`
+    );
+    
+    // Redirect to blocked page
+    chrome.tabs.update(tabId, { url: blockedPageUrl }, () => {
+      // After a short delay, remove from the redirecting set
+      setTimeout(() => {
+        blockedTabRedirects.delete(tabId);
+      }, 1000);
+      
+      if (chrome.runtime.lastError) {
+        log(`[BLOCKING] Error redirecting tab: ${chrome.runtime.lastError.message}`);
+      }
+    });
+  });
+}
+
+// Check if we should block a specific tab
+function checkIfShouldBlockTab(tabId, url) {
+  if (!blockingEnabled || !settings.blockingEnabled) {
+    return;
+  }
+  
+  // Skip if this is already being redirected
+  if (blockedTabRedirects.has(tabId)) {
+    return;
+  }
+  
+  // Don't block extension pages (including our blocked page)
+  if (url.startsWith(chrome.runtime.getURL(''))) {
+    return;
+  }
+  
+  // Extract domain
+  const domain = extractDomain(url);
+  
+  // Don't block browser internal pages
+  if (isInternalBrowserPage(domain)) {
+    return;
+  }
+  
+  // Check if domain has a time limit and if it's exceeded
+  getWebsiteTimeSpent(domain, (timeData) => {
+    hasTimeLimitBeenExceeded(domain, timeData.today, (isExceeded, limit) => {
+      if (isExceeded) {
+        // Check if there's an active override
+        if (isOverrideActive(domain)) {
+          log(`[BLOCKING] Override active for ${domain}, not blocking`);
+          return;
+        }
+        
+        // Block the tab
+        blockTab(tabId, domain, timeData.today, limit);
+      }
+    });
+  });
+}
+
+// Check if a domain is a browser internal page
+function isInternalBrowserPage(domain) {
+  return domain && (
+    domain.startsWith('chrome://') || 
+    domain.startsWith('brave://') || 
+    domain.startsWith('about:') ||
+    domain.startsWith('chrome-extension://')
+  );
+}
+
+// Set temporary override for a domain
+function setBlockingOverride(domain, durationMs = BLOCKING_CONFIG.OVERRIDE_DURATION) {
+  const expirationTime = Date.now() + durationMs;
+  overrideExpirations[domain] = expirationTime;
+  
+  log(`[BLOCKING] Set override for ${domain}, expires in ${durationMs / 1000} seconds`);
+  
+  // Schedule cleanup of the override
+  setTimeout(() => {
+    if (overrideExpirations[domain] === expirationTime) {
+      delete overrideExpirations[domain];
+      log(`[BLOCKING] Override expired for ${domain}`);
+    }
+  }, durationMs);
+}
+
+// Check if there's an active override for a domain
+function isOverrideActive(domain) {
+  const expiration = overrideExpirations[domain];
+  if (!expiration) return false;
+  
+  // Check if the override is still valid
+  return Date.now() < expiration;
+}
+
+// Toggle global blocking state
+function toggleBlocking(enabled) {
+  blockingEnabled = enabled;
+  log(`[BLOCKING] Website blocking ${enabled ? 'enabled' : 'disabled'}`);
+}
+
 // ===== MESSAGE HANDLING =====
 
 // Setup message listeners
@@ -628,6 +886,30 @@ function setupMessageListeners() {
         dumpStorage();
         sendResponse({ success: true });
         break;
+      
+      case 'overrideBlocking':
+        setBlockingOverride(message.domain, message.duration);
+        sendResponse({ success: true });
+        break;
+        
+      case 'toggleBlocking':
+        toggleBlocking(message.enabled);
+        sendResponse({ success: true });
+        break;
+        
+      case 'getWebsiteTimeInfo':
+        getWebsiteTimeSpent(message.domain, (timeData) => {
+          hasTimeLimitBeenExceeded(message.domain, timeData.today, (isExceeded, limit) => {
+            sendResponse({
+              success: true,
+              timeData: timeData,
+              limit: limit,
+              isExceeded: isExceeded,
+              overrideActive: isOverrideActive(message.domain)
+            });
+          });
+        });
+        return true; // Keep channel open for async response
         
       case 'extensionHealthCheck':
         handleHealthCheck(sendResponse);
@@ -648,22 +930,40 @@ function setupMessageListeners() {
 
 // Handle activity events from content scripts
 function handleActivityEvent(event, sender) {
-  // Record the timestamp of this activity
-  recordActivity();
+  // Record the timestamp of activity
+  lastActivityTime = Date.now();
   
-  log(`Activity event: ${event.eventType} from tab ${sender.tab?.id}`);
+  // Log the event with more detail
+  log(`[ACTIVITY] Event: ${event.eventType} from tab ${sender.tab?.id}, window focused: ${windowFocused}`);
+  
+  // Only update state if window is focused
+  if (windowFocused) {
+    if (activityState !== ActivityState.ACTIVE) {
+      transitionTo(ActivityState.ACTIVE);
+    }
+  } else {
+    // If we get activity from a tab but the window is not focused,
+    // this might be a background tab sending events - don't change state
+    log(`[ACTIVITY] Ignoring activity from tab ${sender.tab?.id} because window is not focused`);
+  }
   
   // Additional processing for specific event types
   switch (event.eventType) {
     case 'init':
-      // Content script just initialized in a tab
+      log(`[ACTIVITY] Tab ${sender.tab?.id} initialized`);
       break;
       
     case 'visibilitychange':
-      // Tab visibility changed
+      log(`[ACTIVITY] Tab ${sender.tab?.id} visibility changed to ${event.detail.visible ? 'visible' : 'hidden'}`);
       break;
       
-    // Other event types as needed
+    case 'heartbeat':
+      // No need to log every heartbeat
+      break;
+      
+    default:
+      // Log other event types
+      log(`[ACTIVITY] Event type: ${event.eventType} from tab ${sender.tab?.id}`);
   }
 }
 
@@ -725,6 +1025,7 @@ function handleHealthCheck(sendResponse) {
     activityState: activityState,
     isTracking: isTracking,
     timerRunning: isTimerRunning,
+    blockingEnabled: blockingEnabled,
     timestamp: Date.now(),
     storageFunctional: false
   };
